@@ -1,5 +1,6 @@
 #include "Game.hpp"
-
+#include "utils.hpp"
+#include "Thread.hpp"
 
 static const char *colors[7] = {BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN};
 /*--------------------------------------------------------------------------------
@@ -53,12 +54,12 @@ void Game::_step(uint curr_gen) {
 
 	pthread_mutex_lock(&mtx);
 	while(completed_jobs < m_thread_num){
-	    pthread_cond_wait(&cond, &mtx);
+	    pthread_cond_wait(&cnd, &mtx);
 	}
 
 	phase = 1;
 	completed_jobs = 0;
-	pthread_mutex_unlock();
+	pthread_mutex_unlock(&mtx);
 
 	game_matrix_curr = game_matrix_next; //There is no purpose "fully" swap I guess
 
@@ -66,12 +67,12 @@ void Game::_step(uint curr_gen) {
 
     pthread_mutex_lock(&mtx);
     while(completed_jobs < m_thread_num){
-        pthread_cond_wait(&cond, &mtx);
+        pthread_cond_wait(&cnd, &mtx);
     }
 
     phase = 0;
     completed_jobs = 0;
-    pthread_mutex_unlock();
+    pthread_mutex_unlock(&mtx);
 
     game_matrix_curr = game_matrix_next;
 }
@@ -85,7 +86,7 @@ void Game::_destroy_game(){
     }
 	pthread_mutex_destroy(&mtx);
 	pthread_cond_destroy(&cnd);
-	pthread_mutex_destroy(job_mtx);
+	pthread_mutex_destroy(&job_mtx);
 	delete game_matrix_curr;
 	delete game_matrix_next;
 	delete jobs_queue;
@@ -176,18 +177,18 @@ void Game::execute_phase_one(tuple<int, int> range) {
     const int x[] = { -1,  0,  1, -1, 0, 1, -1, 1 };
 
     for(int i = get<0>(range); i < get<1>(range); i++){
-        for(int ii = 0, ii < matrix_width; ii++){
+        for(int ii = 0; ii < matrix_width; ii++){
             vector<uint> neighbors_specie_hist(8, 0);
             int alive_neighbors = 0;
             int dominant = 0;
             int max = 0;
             for(int k = 0; k < 8; k++){
                 if(is_in_bounds(i+y[k], ii+x[k])){
-                    if((*game_matrix_curr)[i+y[k][ii+x[k]] > 0){
+                    if((*game_matrix_curr)[i+y[k]][ii+x[k]] > 0){
                         alive_neighbors++;
                     }
                     if(alive_neighbors <=  3){
-                        neighbors_specie_hist[(*game_matrix_curr)[i+y[k][ii+x[k]]]++;
+                        neighbors_specie_hist[(*game_matrix_curr)[i+y[k]][ii+x[k]]]++;
                     }
                     if(alive_neighbors == 3){
                         for(uint j = 0; j < 8; j++){
@@ -216,7 +217,7 @@ void Game::execute_phase_two(tuple<int, int> range) {
     const int x[] = { -1,  0,  1, -1, 0, 1, -1, 1 };
 
     for(int i = get<0>(range); i < get<1>(range); i++) {
-        for (int ii = 0, ii<matrix_width; ii++) {
+        for (int ii = 0; ii<matrix_width; ii++) {
             if((*game_matrix_curr)[i][ii] == 0){
                 (*game_matrix_next)[i][ii] = 0;
             } else{
@@ -238,10 +239,24 @@ void Game::execute_phase_two(tuple<int, int> range) {
 }
 
 
-bool is_in_bounds(int row, int column) {
+bool Game::is_in_bounds(int row, int column) {
         if(row < 0 || row >= matrix_height) return false;
         if(column < 0 || column >= matrix_width) return false;
         return true;
 }
+
+const vector<double> Game::gen_hist() const{
+	return m_gen_hist;
+}
+
+const vector<double> Game::tile_hist() const{
+	return m_tile_hist;
+}
+
+uint Game::thread_num() const{
+	return m_thread_num;
+}
+
+Game::~Game() = default;
 
 

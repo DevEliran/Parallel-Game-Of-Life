@@ -1,0 +1,8 @@
+Semaphore.o: Part1/Semaphore.cpp Part1/Headers.hpp Part1/Semaphore.hpp
+main.o: Part2/main.cpp Part2/Game.hpp Part2/../Part1/Headers.hpp \
+ Part2/../Part1/PCQueue.hpp Part2/../Part1/Headers.hpp \
+ Part2/../Part1/Semaphore.hpp Part2/Thread.hpp
+utils.o: Part2/utils.cpp Part2/utils.hpp Part2/../Part1/Headers.hpp
+Game.o: Part2/Game.cpp Part2/Game.hpp Part2/../Part1/Headers.hpp \
+ Part2/../Part1/PCQueue.hpp Part2/../Part1/Headers.hpp \
+ Part2/../Part1/Semaphore.hpp Part2/Thread.hpp Part2/utils.hpp

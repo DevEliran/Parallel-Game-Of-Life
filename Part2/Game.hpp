@@ -2,6 +2,7 @@
 #define __GAMERUN_H
 
 #include "../Part1/Headers.hpp"
+#include "../Part1/PCQueue.hpp"
 #include "Thread.hpp"
 
 /*--------------------------------------------------------------------------------
@@ -33,7 +34,40 @@ struct game_params {
 --------------------------------------------------------------------------------*/
 class Game {
 public:
+/*--------------------------------------------------------------------------------
+									Job Class
+--------------------------------------------------------------------------------*/
+	class Job{
+	public:
+		Game* game;
+		tuple<int, int> thread_range_coverage;
+	//    uint matrix_height;
+	//    uint matrix_width;
+	//    bool phase;
+	//    bool is_last_gen_phase_two;
 
+		Job(Game* g, tuple<int, int> range): game(g), thread_range_coverage(range){}
+		~Job() = default;
+		void execute_job(){
+			auto start = std::chrono::system_clock::now();
+			if(!game->phase){
+				game->execute_phase_one(this->thread_range_coverage);
+			} else if(game->phase){
+				game->execute_phase_two(this->thread_range_coverage);
+			}
+			pthread_mutex_lock(&game->mtx);
+			game->completed_jobs++;
+			if(game->completed_jobs == game->m_thread_num){
+				pthread_cond_signal(&game->cnd);
+			}
+			auto end = std::chrono::system_clock::now();
+			game->m_tile_hist.push_back((double) std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+			pthread_mutex_unlock(&game->mtx);
+		}
+	};
+/*--------------------------------------------------------------------------------
+									Game Class
+--------------------------------------------------------------------------------*/
 	Game(game_params);
 	~Game();
 	void run(); // Runs the game
@@ -63,19 +97,16 @@ protected: // All members here are protected, instead of private for testing pur
 	// TODO: Add in your variables and synchronization primitives
     uint non_effective_thread_num;
     string filename;
-    int_mat game_matrix_curr;
-    int_mat game_matrix_next;
+    int_mat* game_matrix_curr;
+    int_mat* game_matrix_next;
     uint matrix_height;
     uint matrix_width;
 
-    PCQueue<Job>* jobs_queue;
     int completed_jobs;
-    int jobs_left;
-    bool phase;
 
     pthread_mutex_t mtx;
     pthread_cond_t cnd;
-    pthread_mutex_t job_mtx;
+    
 
     void initialize_game_matrix();
     void fill_jobs_queue();
@@ -83,5 +114,29 @@ protected: // All members here are protected, instead of private for testing pur
     void execute_phase_one(tuple<int, int> range);
     void execute_phase_two(tuple<int, int> range);
     bool is_in_bounds(int r, int c);
+    
+public:
+	int jobs_left;
+    bool phase;
+    PCQueue<Job>* jobs_queue;
+    pthread_mutex_t job_mtx;
+};
+
+
+class GameThread: public Thread{
+public:
+    Game* game;
+    GameThread(uint id, Game* g): Thread(id), game(g){}
+    virtual ~GameThread() = default;
+    
+    void thread_workload() override {
+        while(game->jobs_left > 0){
+            pthread_mutex_lock(&game->job_mtx);
+            Game::Job curr_job = game->jobs_queue->pop(); //blocks if empty (pcq)
+            game->jobs_left--;
+            pthread_mutex_unlock(&game->job_mtx);
+            curr_job.execute_job();
+        }
+    }
 };
 #endif

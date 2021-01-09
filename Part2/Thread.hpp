@@ -2,8 +2,7 @@
 #define __THREAD_H
 
 #include "../Part1/Headers.hpp"
-#include "Game.hpp"
-#include "Job.h"
+
 class Thread
 {
 public:
@@ -40,23 +39,5 @@ protected:
 private:
 	static void * entry_func(void * thread) { ((Thread *)thread)->thread_workload(); return NULL; }
 	pthread_t m_thread;
-};
-
-
-class GameThread: public Thread{
-public:
-    Game* game;
-    GameThread(uint id, Game* g): Thread(id), game(g){}
-    virtual ~GameThread() = default;
-    
-    void thread_workload() override {
-        while(game->jobs_left > 0){
-            pthread_mutex_lock(&game->job_mtx);
-            Job curr_job = game->jobs_queue->pop(); //blocks if empty (pcq)
-            game->jobs_left--;
-            pthread_mutex_unlock(&game->job_mtx);
-            curr_job.execute_job();
-        }
-    }
 };
 #endif
