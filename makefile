@@ -1,10 +1,10 @@
-##----------------------------------------------------------------------
+﻿##----------------------------------------------------------------------
 ##							Makefile Variables
 ##----------------------------------------------------------------------
 TARGET := GameOfLife
 
 CXX := g++
-CXXFLAGS := -std=c++11 -g -Wall -pedantic-errors -pthread 
+CXXFLAGS := -std=c++11 -g -Wall -pedantic-errors -lpthread -pthread # TODO i added "-pthread"
 LDFLAGS := -lpthread -static-libstdc++
 RM := rm -f
 
